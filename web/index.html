@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta id="theme-meta" name="theme-color" content="#050505">
+    <link rel="icon" id="dynamic-favicon" type="image/png" href="icon.png">
+    <meta charset="UTF-8">
+    <title>Zapret UI</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>ZAPRET <span class="gray">UI</span></h1>
+        <div class="version">v5.0</div>
+    </div>
+
+    <div class="nav-menu">
+        <button class="nav-btn active" onclick="switchTab('main')">УПРАВЛЕНИЕ</button>
+        <button class="nav-btn" onclick="switchTab('tuner')">ПОДБОР</button>
+        <button class="nav-btn" onclick="switchTab('settings')">НАСТРОЙКИ</button>
+    </div>
+
+    <div id="tab-main" class="tab-content active-tab">
+        <div class="card">
+            <h2 class="status-text">СТАТУС: <span id="status" class="gray">ВЫКЛЮЧЕН</span></h2>
+            <select id="bat-selector" class="custom-select" onchange="saveSelection()">
+                <option>Загрузка файлов...</option>
+            </select>
+            <button id="btn-toggle" class="btn-main" onclick="startEngine()">ЗАПУСТИТЬ ОБХОД</button>
+        </div>
+
+        <div class="card" style="margin-top: 15px; padding: 12px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h3 style="margin: 0; font-size: 14px;">СИСТЕМНАЯ СЛУЖБА</h3>
+                <span id="svc-status" style="font-size: 12px; font-weight: bold; color: var(--text-muted);">ОЖИДАНИЕ...</span>
+            </div>
+            <button class="btn-secondary" style="padding: 8px;" onclick="openServiceBat()">ОТКРЫТЬ МЕНЮ (service.bat)</button>
+        </div>
+
+        <div class="card net-card">
+            <button class="btn-secondary" onclick="runNetTest()">ДИАГНОСТИКА СЕТИ</button>
+            <div class="net-stats">
+                <span id="stat-ds" class="gray">Discord: ---</span>
+                <span id="stat-yt" class="gray">YouTube: ---</span>
+            </div>
+            <h3 id="stat-ping" class="ping-text gray">Пинг: --- мс</h3>
+        </div>
+
+        <div class="logs-header">
+            <span style="font-size: 12px; font-weight: bold; color: var(--text-muted);">КОНСОЛЬ СОБЫТИЙ</span>
+            <button class="logs-toggle" onclick="toggleLogs()" id="btn-log-toggle">СКРЫТЬ ▲</button>
+        </div>
+        <div class="logs-container" id="logs-container">
+            <textarea id="log-box" readonly>Система готова. Ожидание команд...&#13;&#10;</textarea>
+        </div>
+    </div>
+
+    <div id="tab-tuner" class="tab-content">
+        <div class="card">
+            <h2 class="status-text">СКАНЕР КОНФИГУРАЦИЙ</h2>
+            <p class="gray" style="font-size: 13px; margin-top: 5px;">Автоматический поиск лучшего файла обхода</p>
+            <button id="btn-scan" class="btn-main" style="margin-top: 10px;" onclick="startScanner()">НАЧАТЬ СКАНИРОВАНИЕ</button>
+            <div class="logs-container" style="margin-top: 15px;">
+                <textarea id="tuner-log" readonly>Нажмите кнопку для старта...&#13;&#10;</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+        <div class="card">
+            <h2 class="status-text">ОФОРМЛЕНИЕ</h2>
+            <div class="setting-row">
+                <span class="gray">Тема приложения</span>
+                <select id="theme-selector" class="custom-select" style="width: 140px; margin-bottom: 0; padding: 8px;" onchange="applyTheme()">
+                    <option value="amoled">AMOLED (Чёрная)</option>
+                    <option value="dark">Тёмная (Серая)</option>
+                    <option value="light">Светлая</option>
+                    <option value="custom">Своя тема</option>
+                </select>
+            </div>
+            
+            <div id="custom-theme-box" style="display: none; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 15px; margin-top: 10px; border: 1px solid var(--border-color);">
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Цвет кнопок (Акцент)</span>
+                    <input type="color" id="custom-color-picker" value="#ff0000" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Цвет фона</span>
+                    <input type="color" id="custom-bg-color-picker" value="#050505" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Основной текст</span>
+                    <input type="color" id="custom-text-color-picker" value="#ffffff" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Вторичный текст</span>
+                    <input type="color" id="custom-muted-color-picker" value="#aaaaaa" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Прозрачность панелей</span>
+                    <input type="range" id="custom-alpha-slider" min="0" max="1" step="0.05" value="0.6" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Сила размытия (Blur)</span>
+                    <input type="range" id="custom-blur-slider" min="0" max="50" step="1" value="20" onchange="applyTheme()">
+                </div>
+                <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                    <span class="gray" style="font-size: 12px;">Картинка на фон</span>
+                    <div>
+                        <button class="btn-secondary" style="width: auto; padding: 5px 10px;" onclick="setCustomBgImage()">ОБЗОР</button>
+                        <button class="btn-secondary" style="width: auto; padding: 5px 10px; background: rgba(255,0,0,0.2);" onclick="resetCustomBgImage()">✖</button>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="status-text" style="margin-top: 25px;">РАМКА И ИКОНКА</h2>
+            <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                <span class="gray" style="font-size: 12px;">Невидимая рамка (Сливается с фоном)</span>
+                <label class="switch">
+                    <input type="checkbox" id="set-transparent-frame" onchange="toggleFrameMode()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="setting-row" id="frame-color-row" style="border-bottom: none; padding: 5px 0;">
+                <span class="gray" style="font-size: 12px;">Цвет верхней рамки окна</span>
+                <input type="color" id="frame-color-picker" value="#050505" onchange="updateFrameColor(this.value)">
+            </div>
+
+            <div class="setting-row" style="border-bottom: none; padding: 5px 0;">
+                <span class="gray" style="font-size: 12px;">Цвет логотипа (Трей и Вкладка)</span>
+                <input type="color" id="icon-color-picker" value="#9b59b6" onchange="setDynamicIconColor(this.value)">
+            </div>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 5px; margin-bottom: 10px;">
+
+            <h2 class="status-text" style="margin-top: 25px;">СИСТЕМА</h2>
+            <div class="setting-row">
+                <span class="gray">Автозапуск вместе с Windows</span>
+                <label class="switch">
+                    <input type="checkbox" id="set-autostart" onchange="saveAllSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span class="gray">Сворачивать в трей при закрытии</span>
+                <label class="switch">
+                    <input type="checkbox" id="set-minimized" onchange="saveAllSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <h2 class="status-text" style="margin-top: 25px;">РАСПОЛОЖЕНИЕ ДВИЖКА</h2>
+            <p class="gray" style="font-size: 11px; margin-top: 5px;">Укажите путь к папке zapret, если она лежит в другом месте.</p>
+            <div class="folder-picker">
+                <input type="text" id="set-path" readonly placeholder="По умолчанию (рядом с программой)">
+                <button class="btn-secondary" style="width: auto; margin: 0; padding: 8px 12px;" onclick="selectFolder()">ОБЗОР</button>
+                <button class="btn-secondary" style="width: auto; margin: 0; padding: 8px 12px; background: rgba(255,255,255,0.05);" onclick="resetFolder()">СБРОС</button>
+            </div>
+            <p id="path-status" style="font-size: 11px; color: var(--text-muted); margin-top: 8px;"></p>
+        </div>
+    </div>
+
+    <div class="branding">
+        ZAPRET UI ENGINE • DEVELOPED BY <b>.sttc</b> <span class="gray">(sttc-byte)</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
