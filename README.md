@@ -16,8 +16,8 @@
 ### 📸 Скриншоты интерфейса
 | Главный экран | Сканер конфигов | Настройки темы |
 | :---: | :---: | :---: |
-| ![Main](https://ibb.co/TBgTzX0L) | ![Scanner](https://ibb.co/BH0y0L6Q) | ![Settings](https://ibb.co/HLg0tMrQ) |
-*(Здесь вы можете вставить ссылки на свои реальные скриншоты)*
+| ![Main]([![zagruzeno.png](https://i.postimg.cc/852ZgPJ5/zagruzeno.png)](https://postimg.cc/VrFqjwFQ)) | ![Scanner]([![zagruzeno-(1).png](https://i.postimg.cc/BQGmhbG4/zagruzeno-(1).png)](https://postimg.cc/CdmC5F1Q)) | ![Settings]([![zagruzeno-(2).png](https://i.postimg.cc/9QL1FBwW/zagruzeno-(2).png)](https://postimg.cc/tsVFBWzf)) |
+
 
 ---
 
