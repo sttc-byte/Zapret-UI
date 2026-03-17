@@ -9,13 +9,13 @@ import ctypes
 from ctypes import wintypes
 import urllib.request
 import re
-import winreg
 import tkinter as tk
 from tkinter import filedialog
 from concurrent.futures import ThreadPoolExecutor
 import pystray
 from PIL import Image
 import base64
+import traceback # Добавлено для отлова критических ошибок
 
 eel.init('web')
 
@@ -50,9 +50,14 @@ def load_config():
     return default_config
 
 def save_config(data):
+    # Атомарное сохранение конфига через временный файл
+    temp_file = CONFIG_FILE + ".tmp"
     try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f: json.dump(data, f, indent=4)
-    except: pass
+        with open(temp_file, "w", encoding="utf-8") as f: 
+            json.dump(data, f, indent=4)
+        os.replace(temp_file, CONFIG_FILE)
+    except Exception as e: 
+        pass
 
 config_data = load_config()
 if config_data.get("zapret_path") and os.path.exists(config_data["zapret_path"]):
@@ -62,7 +67,8 @@ else:
 
 is_ws_active = None
 is_service_installed = None
-executor = ThreadPoolExecutor(max_workers=10)
+# Оптимизация пулов потоков 
+executor = ThreadPoolExecutor(max_workers=3) 
 
 def is_admin():
     try: return ctypes.windll.shell32.IsUserAnAdmin()
@@ -80,7 +86,6 @@ def log_to_web(msg):
     try: eel.add_log(msg)
     except: pass
 
-# Перехватываем команду start из батников, чтобы запускать без окон
 def create_ninja_bat(bat_name):
     bat_path = os.path.join(ZAPRET_DIR, bat_name)
     temp_bat_path = os.path.join(ZAPRET_DIR, "temp_ui_run.bat")
@@ -91,6 +96,9 @@ def create_ninja_bat(bat_name):
             for line in lines:
                 if "winws" in line.lower() and "start" in line.lower():
                     line = re.sub(r'(?i)start\s+(?:"[^"]*"\s*)?(?:/(?:min|b|wait)\s*)?', '', line)
+                # Фильтр блокировки редиректов на GitHub
+                if "start http" in line.lower(): 
+                    continue
                 f.write(line)
         return True
     except Exception as e:
@@ -138,17 +146,15 @@ def save_settings(new_config):
     config = load_config()
     config.update(new_config)
     save_config(config)
-    key_path = r'Software\Microsoft\Windows\CurrentVersion\Run'
+    # Замена блокируемого реестра на Планировщик задач (Schtasks)
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
         if config.get("autostart"):
-            winreg.SetValueEx(key, 'ZapretUI', 0, winreg.REG_SZ, f'"{exe_path}"')
+            cmd = f'schtasks /create /tn "ZapretUI" /tr "\'{exe_path}\'" /sc onlogon /rl highest /f'
+            subprocess.run(cmd, startupinfo=get_silent_info(), creationflags=CREATE_NO_WINDOW)
         else:
-            try: winreg.DeleteValue(key, 'ZapretUI')
-            except: pass
-        winreg.CloseKey(key)
+            subprocess.run('schtasks /delete /tn "ZapretUI" /f', startupinfo=get_silent_info(), creationflags=CREATE_NO_WINDOW)
     except Exception as e:
-        log_to_web(f"Ошибка изменения реестра: {e}")
+        log_to_web(f"Ошибка изменения автозапуска: {e}")
 
 @eel.expose
 def pick_folder():
@@ -195,9 +201,6 @@ def get_bat_files():
     bats = [f for f in os.listdir(ZAPRET_DIR) if f.endswith('.bat') and f not in exclude]
     return bats if bats else ["Батники не найдены"]
 
-# ==========================================
-# Кастомная покраска рамки окна (Win 10/11)
-# ==========================================
 DWMWA_CAPTION_COLOR = 35
 DWMWA_USE_IMMERSIVE_DARK_MODE = 20
 DWMWA_SYSTEMBACKDROP_TYPE = 38
@@ -220,27 +223,24 @@ def change_frame_color(hex_color):
                     ctypes.windll.user32.GetClassNameW(h, class_buff, 256)
                     
                     if "Zapret UI" in title_buff.value and class_buff.value == "Chrome_WidgetWin_1":
-                        if win_build >= 22000: # Если 11-я винда, юзаем Acrylic эффект блюра
+                        if win_build >= 22000:
                             ctypes.windll.dwmapi.DwmSetWindowAttribute(h, DWMWA_CAPTION_COLOR, ctypes.byref(color), ctypes.sizeof(color))
                             backdrop = ctypes.c_int(2) 
                             ctypes.windll.dwmapi.DwmSetWindowAttribute(h, DWMWA_SYSTEMBACKDROP_TYPE, ctypes.byref(backdrop), ctypes.sizeof(backdrop))
-                        elif win_build >= 17763: # На 10-ке просто дергаем системный темный режим
+                        elif win_build >= 17763:
                             dark_mode = ctypes.c_int(1 if (r+g+b)/3 < 128 else 0)
                             ctypes.windll.dwmapi.DwmSetWindowAttribute(h, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(dark_mode), ctypes.sizeof(dark_mode))
                         return False
             return True
         
         def apply():
-            time.sleep(0.5)
+            time.sleep(1.5) # РЕШЕНИЕ: Увеличен таймаут для Win11, чтобы окно успело создаться
             ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(enum_cb), 0)
         
         threading.Thread(target=apply, daemon=True).start()
     except Exception:
         pass
 
-# ==========================================
-# Динамическая иконка в трее 
-# ==========================================
 @eel.expose
 def change_tray_icon(hex_color):
     global icon 
@@ -285,7 +285,6 @@ def toggle_engine(bat_name):
 @eel.expose
 def get_status(): return is_ws_active
 
-# Мониторинг процессов движка в фоне
 def bg_monitor():
     global is_ws_active, is_service_installed
     time.sleep(1) 
@@ -410,6 +409,12 @@ if __name__ == '__main__':
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
         sys.exit()
     else:
+        # Mutex для защиты от двойного запуска 
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "ZapretUI_Mutex_sttc")
+        if ctypes.windll.kernel32.GetLastError() == 183: # ERROR_ALREADY_EXISTS
+            ctypes.windll.user32.MessageBoxW(0, "Программа уже запущена!\nПроверьте системный трей.", "Zapret UI", 0x30)
+            sys.exit()
+
         threading.Thread(target=bg_monitor, daemon=True).start()
         
         def create_tray_image():
@@ -417,7 +422,6 @@ if __name__ == '__main__':
             if os.path.exists(base_path):
                 try:
                     base_img = Image.open(base_path).convert("RGBA")
-                    
                     config = load_config()
                     hex_color = config.get("tray_color", "#9b59b6").lstrip('#')
                     r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
@@ -433,8 +437,6 @@ if __name__ == '__main__':
                     colored.putalpha(mask)
                     return colored
                 except: pass
-            
-            # Если иконки нет, отдаем пустую альфу, чтобы не было белого дерьма
             return Image.new('RGBA', (64, 64), (0, 0, 0, 0))
 
         def show_window(icon, item):
@@ -460,13 +462,19 @@ if __name__ == '__main__':
                 subprocess.Popen('taskkill /F /IM winws.exe /T', startupinfo=get_silent_info(), creationflags=CREATE_NO_WINDOW)
                 os._exit(0)
 
-        # Запускаем без изоляции профиля (--user-data-dir), чтобы подхватывались темы из системного Edge на десятке
-        app_args = ['--window-size=480,890']
+        # Флаг enable-transparent-visuals нужен для прозрачной рамки
+        app_args = ['--window-size=480,890', '--enable-transparent-visuals']
         
+        # Глобальный отлов ошибок UI 
         try:
-            eel.start('index.html', size=(480, 890), port=0, block=False, close_callback=on_close, cmdline_args=app_args)
-        except Exception as e:
-            eel.start('index.html', size=(480, 890), port=0, mode='edge', block=False, close_callback=on_close, cmdline_args=app_args)
+            try:
+                eel.start('index.html', size=(480, 890), port=0, block=False, close_callback=on_close, cmdline_args=app_args)
+            except Exception:
+                eel.start('index.html', size=(480, 890), port=0, mode='edge', block=False, close_callback=on_close, cmdline_args=app_args)
 
-        while True:
-            eel.sleep(1)
+            while True:
+                eel.sleep(1)
+        except Exception as e:
+            error_msg = traceback.format_exc()
+            ctypes.windll.user32.MessageBoxW(0, f"Критическая ошибка отрисовки UI:\n{error_msg}\n\nВозможно, в Windows поврежден WebView2 или Edge.", "Zapret UI Crash", 0x10)
+            sys.exit(1)
