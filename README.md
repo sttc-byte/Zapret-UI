@@ -16,7 +16,7 @@
 ### 📸 Скриншоты интерфейса
 | Главный экран | Сканер конфигов | Настройки темы |
 | :---: | :---: | :---: |
-| ![Main]([![zagruzeno.png](https://i.postimg.cc/852ZgPJ5/zagruzeno.png)](https://postimg.cc/VrFqjwFQ)) | ![Scanner]([![zagruzeno-(1).png](https://i.postimg.cc/BQGmhbG4/zagruzeno-(1).png)](https://postimg.cc/CdmC5F1Q)) | ![Settings]([![zagruzeno-(2).png](https://i.postimg.cc/9QL1FBwW/zagruzeno-(2).png)](https://postimg.cc/tsVFBWzf)) |
+| ![Main](https://i.postimg.cc/852ZgPJ5/zagruzeno.png) | ![Scanner](https://i.postimg.cc/BQGmhbG4/zagruzeno-(1).png) | ![Settings](https://i.postimg.cc/9QL1FBwW/zagruzeno-(2).png) |
 
 
 ---
